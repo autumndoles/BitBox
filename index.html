@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Packaged Scratch Project</title>
+    <style>
+        body, html { margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%; background: #000; }
+        canvas { width: 100%; height: 100%; object-fit: contain; display: block; margin: 0 auto; }
+    </style>
+    <!-- Load required Scratch dependencies -->
+    <script src="https://cloudflare.com"></script>
+    <script src="https://cloudflare.com"></script>
+    <script src="https://cloudflare.com"></script>
+    <script src="https://cloudflare.com"></script>
+    <script src="https://cloudflare.com"></script>
+</head>
+<body>
+    <canvas id="stage"></canvas>
+    <script>
+        const canvas = document.getElementById('stage');
+        const vm = new VirtualMachine();
+        const storage = new ScratchStorage();
+        
+        // Connect assets servers so it can pull the assets dynamically using the ID
+        storage.addWebSource(storage.AssetType.Project, id => `https://projects.scratch.mit.edu/${id}`);
+        storage.addWebSource(storage.AssetType.ImageVector, asset => `https://mit.edu${asset.assetId}.${asset.dataFormat}/get/`);
+        storage.addWebSource(storage.AssetType.ImageBitmap, asset => `https://mit.edu${asset.assetId}.${asset.dataFormat}/get/`);
+        storage.addWebSource(storage.AssetType.Sound, asset => `https://mit.edu${asset.assetId}.${asset.dataFormat}/get/`);
+        
+        vm.attachStorage(storage);
+
+        // Set up the WebGL Renderer
+        const renderer = new ScratchRender(canvas);
+        vm.attachRenderer(renderer);
+        
+        // Set up Audio and SVG structural tools
+        vm.attachAudioEngine(new AudioEngine());
+        vm.attachVBOs(new ScratchSVGRenderer.BitmapAdapter());
+
+        // Feed mouse and keyboard events into the VM
+        window.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width * 2 - 1;
+            const y = -(e.clientY - rect.top) / rect.height * 2 + 1;
+            vm.postIOData('mouse', {x: x * 240, y: y * 180, isDown: e.buttons === 1});
+        });
+        window.addEventListener('mousedown', () => vm.postIOData('mouse', {isDown: true}));
+        window.addEventListener('mouseup', () => vm.postIOData('mouse', {isDown: false}));
+        window.addEventListener('keydown', e => vm.postIOData('keyboard', {key: e.key, isDown: true}));
+        window.addEventListener('keyup', e => vm.postIOData('keyboard', {key: e.key, isDown: false}));
+
+        // Fetch and boot project
+        storage.load(storage.AssetType.Project, "1391982074")
+            .then(projectAsset => vm.loadProject(projectAsset.data))
+            .then(() => {
+                vm.start();
+                vm.greenFlag(); // Automatically auto-starts the project
+            })
+            .catch(err => console.error("Failed to load project:", err));
+    </script>
+</body>
+</html>
